@@ -1,0 +1,56 @@
+id: oxygen-content-fusion
+display_name: Oxygen Content Fusion
+archetype: [A]                    # deliberately A, not B - see below
+source_format: dita
+last_verified: 2026-09-18
+confidence: medium
+
+# This is the most under-appreciated finding in the whole vendor survey.
+why_archetype_a:
+  severity: high
+  text: >
+    Content Fusion is a genuinely Git-native DITA CMS hiding inside what most people think of as a
+    review tool. A Content Fusion project MIRRORS a Git repository: authors get per-branch personal
+    workspaces, commit directly, and review tasks automatically create review branches that are
+    merged back with a 3-way merge tool. For an Oxygen shop that wants docs-as-code, this is the
+    shortest path that exists - shorter than anything DAC would build from scratch. It belongs in
+    archetype A as a first-class option, not as a footnote in the Oxygen probe list.
+
+git:
+  source_sync: true
+  providers: [github, gitlab, bitbucket_cloud, azure_devops]
+  auth: Personal Access Tokens
+  token_scopes:
+    github: Contents read/write
+    gitlab: [read_repository, write_repository]
+  branching: per-branch personal workspaces
+  review_model: review tasks create review branches, merged back via a 3-way merge tool
+
+gotchas:
+  - id: token-scopes-do-not-override-branch-protection
+    severity: medium
+    text: >
+      Syncro Soft flags the classic trap: token scopes do not override protected-branch project
+      roles, so pushes to `main` can still fail even with a correctly scoped PAT. Check branch
+      protection separately from token scope.
+
+separate_skus:
+  - capability: Content Fusion Enterprise Server
+    why_needed: full use; the connector add-on alone is bundled with Oxygen
+    price: quote only
+
+recommendation: >
+  If Content Fusion is detected, or if Oxygen is detected and the team is evaluating options, DAC
+  should surface this in the report as a shorter alternative to a hand-built pipeline, and record
+  an ADR either way. Do not silently build a parallel pipeline alongside it.
+
+detect:
+  files: ["cf-project.xml"]
+  patterns: ["content-fusion"]
+  addon_location: the Oxygen add-ons directory
+  indirect_signal: an Oxygen project checkout that is itself a Git repository of DITA
+
+docs:
+  - https://www.oxygenxml.com/doc/versions/9.1/ug-content-fusion-cloud/topics/cf-projects.html
+  - https://www.oxygenxml.com/doc/versions/9.1/ug-content-fusion/topics/cf-git-access-tokens.html
+  - https://www.xml.com/news/2025-03-oxygen-content-fusion-80-ai-powered-productivity-and-advanced-git-integration-for-dita-teams/

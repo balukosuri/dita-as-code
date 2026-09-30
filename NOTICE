@@ -1,0 +1,25 @@
+DITA-as-Code Kit (DAC)
+Copyright 2026 The DAC Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+This product includes no third-party code. Every script is Python
+standard library only.
+
+It generates configuration that downloads and runs the following
+third-party tools, each under its own licence:
+
+  DITA Open Toolkit          Apache-2.0    https://www.dita-ot.org/
+  Vale                       MIT           https://vale.sh/
+  Prettier + plugin-xml      MIT           https://prettier.io/
+  husky, lint-staged         MIT
+  SchXslt                    MIT           https://codeberg.org/SchXslt/schxslt
+  jing                       BSD           https://relaxng.org/jclark/jing.html
+
+The idea that DITA belongs in a docs-as-code model is not ours. It was
+argued publicly by Tech Writer Koduje (https://techwriterkoduje.pl/dita-as-code/)
+and pioneered by DITA For Small Teams (http://www.d4st.org/).

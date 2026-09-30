@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA Concept//EN" "concept.dtd">
+<concept id="GUID-a1b2c3d4-0000-4000-8000-000000000001">
+  <title>UUID-referenced concept</title>
+  <conbody>
+    <p>References here are UUID-based and path independent.</p>
+    <xref href="GUID-a1b2c3d4-0000-4000-8000-000000000099.dita"/>
+  </conbody>
+</concept>

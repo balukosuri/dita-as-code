@@ -1,0 +1,23 @@
+{
+  "name": "{{REPO_NAME}}-docs",
+  "private": true,
+  "description": "DITA documentation build and formatting tooling",
+  "scripts": {
+    "format": "prettier --write \"**/*.{dita,ditamap,bookmap,ditaval,xml,md,json,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{dita,ditamap,bookmap,ditaval,xml,md,json,yml,yaml}\"",
+    "prepare": "husky",
+    "build": "./scripts/build.sh",
+    "validate": "./scripts/validate.sh"
+  },
+  "lint-staged": {
+    "*.{dita,ditamap,bookmap,ditaval,xml,md,json,yml,yaml}": [
+      "prettier --write"
+    ]
+  },
+  "devDependencies": {
+    "@prettier/plugin-xml": "^3.4.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.2",
+    "prettier": "^3.6.2"
+  }
+}

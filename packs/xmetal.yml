@@ -1,0 +1,79 @@
+id: xmetal
+display_name: XMetaL Author Enterprise
+archetype: [A]
+source_format: dita
+last_verified: 2026-09-18
+confidence: high
+
+current_version: "20.0"
+maintained: true
+maintained_note: >
+  NOT end-of-life, contrary to common assumption. Release notes for 20.0 describe updated binaries
+  for current Windows SDKs and Visual Studio tooling, full Windows 10/11 compatibility, critical
+  security fixes and a smaller installer. A JustSystems Annual Maintenance Agreement still covers
+  upgrades, updates, support and a beta programme.
+
+bundled_toolchain:
+  dita_ot: 4.2.2 XM               # "XM" denotes a JustSystems-modified build
+  renderx_xep: "4.18"
+  saxon: Saxon-CE 1.1
+  schematron: ISO Schematron
+  note: >
+    Pinning CI to stock DITA-OT 4.2.2 gets close but not identical, because XM is a modified build.
+
+authoring:
+  headless: false
+  api: COM / macro, in-process only
+  automation_note: >
+    There is no documented command-line build. The automation surface executes inside the running
+    editor. DAC automates downstream of the save, which makes this irrelevant to the pipeline.
+
+platform: windows_only
+
+detect:
+  files: ["xmetal*.ini", "*.ctm", "*.mcr", "*.xac", "*.rlx", "*.rld", "*.rls", "xmetal.lic"]
+  dirs: ["Rules", "Display", "Macros", "Forms"]
+  install_paths:
+    windows:
+      - "%PROGRAMFILES(X86)%\\XMetaL\\Author\\DITA\\<n.n>\\XACs"
+      - "%PROGRAMFILES(X86)%\\XMetaL\\Author\\DITA\\DITA_<n.n>_DTD"
+      - "%PROGRAMDATA%\\SoftQuad\\XMetaL\\Shared\\DITA_OT"
+      - "%APPDATA%\\SoftQuad\\XMetaL"
+  registry:
+    run_marker: "HKEY_CURRENT_USER\\Software\\SoftQuad\\XMetaL <x.x>"
+    install_marker: "HKLM\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*"
+  notes:
+    - The INI file is VERSIONED - xmetal60.ini, not xmetal.ini. There is a global one and a
+      per-user one.
+    - The HKCU key is created on first RUN, not install, so its absence does not prove absence.
+      Use the Uninstall key for install detection.
+    - .ctm must sit beside the DTD it customises.
+    - .xac takes precedence when present and normally contains the compiled rules, making an
+      external .rlx unnecessary. Mixing .xac with a traditional file set is unsupported.
+
+silent_install:
+  msi: "XMetaL Author Enterprise.msi"
+  licence: xmetal.lic beside the MSI, or pass XMETAL_LICENSE_PATH
+
+gotchas:
+  - id: versioned-ini
+    severity: medium
+    text: >
+      Looking for a literal "xmetal.ini" misses every real installation. Match xmetal<digits>.ini.
+  - id: documentum-variant
+    severity: low
+    text: >
+      XMetaL Author Enterprise for Documentum exists as a separate DocApp. If present, Documentum
+      is a second system to detect and account for.
+
+morale_note: >
+  XMetaL 20.0 bundles DITA-OT 4.2.2 - newer than every cloud CCMS surveyed (IXIA defaults to
+  2.5.4, AEM Guides ships 3.3.2, Heretto caps at 3.7.4). The desktop editor everyone assumes is
+  legacy has the most modern toolkit of the four. Tell the team this; it is a morale point as much
+  as a technical one.
+
+docs:
+  - https://downloads.xmetal.com/downloads/XMEE20.0/XMetaL-Author-Enterprise-20.0-Release-Notes.html
+  - https://downloads.xmetal.com/downloads/XMEE20.0/install-readme.html
+  - https://xmetal.com/policies-packages/
+  - https://downloads.xmetal.com/downloads/XMDV19.0/XMetaL-Customization-Guide.pdf

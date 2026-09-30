@@ -1,0 +1,122 @@
+id: dita-ot
+display_name: DITA Open Toolkit
+archetype: [A]
+source_format: dita
+last_verified: 2026-09-18
+confidence: high
+
+current_release: 4.4.1            # released 2026-08-21
+release_line: "4.4"               # 4.4 shipped 2026-01-31
+runtime:
+  java_min: 17
+  java_tested_max: 21
+  note: >
+    Designed to run on Java 17 or later, built and tested with OpenJDK. DITA-OT's own CI pins
+    Temurin 17. A bare `brew install dita-ot` depends on plain `openjdk`, which currently
+    resolves to a far newer JDK than the toolkit is tested against.
+
+cli:
+  binary: dita
+  forms:
+    - dita --input=<file> --format=<name> [options]
+    - dita --project=<file> [options]
+  subcommands: [deliverables, init, install, plugins, transtypes, validate, uninstall, version]
+  builtin_transtypes:
+    [dita, eclipsehelp, html5, htmlhelp, markdown, markdown_gitbook, markdown_github, pdf, xhtml]
+  useful_options:
+    - --filter            # apply a .ditaval. Omitting this is the green-and-wrong failure mode.
+    - --project           # declarative deliverables
+    - --deliverable       # repeatable only from 4.4 onward
+    - --logger=json       # one JSON object per line; an array when written to --logfile
+    - --stacktrace
+    - --processing-mode=strict
+
+container:
+  registry: ghcr.io/dita-ot/dita-ot
+  current_tag: 4.4.1
+  invoke: >
+    docker run --rm -v "$PWD:/src" ghcr.io/dita-ot/dita-ot:4.4.1
+    -i /src/input.ditamap -o /src/out -f html5 -v
+  note: The image ENTRYPOINT already runs `dita`, so pass arguments only.
+
+project_file:
+  conventional_name: dita-ot-project.xml
+  namespace: https://www.dita-ot.org/project
+  validates_against: resources/project.rnc     # RELAX NG compact, shipped in the installation
+  expresses: [deliverable, context, input, profile, ditaval, publication, param, include]
+  gotcha: >
+    <output href> is resolved relative to the CLI --output directory, not the project file.
+
+plugin_registry:
+  browse: https://www.dita-ot.org/plugins
+  backing_repo: https://github.com/dita-ot/registry
+  install: dita install <id|url|zip>
+  pin_version: dita --install=<name>@<version>
+  private_registry: >
+    Append a URL to the space-separated `registry` key in config/configuration.properties.
+    `plugindirs` points at externally version-controlled plugin repos.
+
+ci:
+  github_action: dita-ot/dita-ot-action
+  action_current_tag: 4.4.1
+  action_inputs: [transtype, input, output-path, properties, plugins, install, build,
+                  dita-ot-version, project]
+
+gotchas:
+  - id: docker-hub-is-abandoned
+    severity: high
+    text: >
+      The Docker Hub image `ditaot/dita-ot` was last pushed years ago and its newest version tag
+      is 2.5.3. Its own README warns it will not work as an extension base. Searching for
+      "DITA-OT docker" surfaces it prominently. The official image is on GHCR.
+  - id: ditaval-omitted-builds-green
+    severity: high
+    text: >
+      A build that omits --filter emits conditional content into the wrong output and still exits
+      zero. DITA-OT does not warn. Every deliverable must declare its .ditaval.
+  - id: exit-code-is-not-link-integrity
+    severity: high
+    text: >
+      A green exit code is insufficient evidence of reference integrity. Unresolved conrefs in the
+      PDF preprocess2 stage produced no message at all until a fix closed in July 2023, and
+      keyrefs inside conref'd content went unresolved in 3.5 through 3.6.1 against the spec's
+      intent. Run a dedicated link check as well.
+  - id: markdown-extension-ignored
+    severity: medium
+    text: >
+      File extensions are ignored for Markdown and HDITA topics. Without @format="markdown",
+      "md", "mdita" or "hdita" on the topicref, the file is not recognised at all. Keys cannot be
+      defined in Markdown topicrefs.
+  - id: chunking-filenames-changed-in-44
+    severity: medium
+    text: >
+      4.4 routed DITA 1.x simple chunking through the DITA 2.0 chunking module in compatibility
+      mode, which may change generated file names for splitting operations. Output URLs can break
+      silently on upgrade.
+  - id: xmllint-is-not-a-relaxng-validator
+    severity: medium
+    text: >
+      xmllint is not dependable for RELAX NG, which matters because DITA 2.0 grammars and
+      project.rnc are RNG. Use jing for those.
+  - id: dita-2-0-is-a-draft
+    severity: medium
+    text: >
+      DITA-OT labels its DITA 2.0 support as preview against draft grammars, and correctly so.
+      DITA 2.0 is not an OASIS standard - the newest formal document is a 2018 public review
+      draft, and DITA 1.3 from 2015 remains current. Do not tell a team they are "on DITA 2.0".
+  - id: archived-community-plugins
+    severity: low
+    text: >
+      net.infotexture.dita-bootstrap, widely recommended for HTML5 output and used in the
+      dita-ot-action README examples, is an archived repository. heremaps/com.here.validate.svrl
+      now 404s with only a low-traffic fork surviving.
+
+docs:
+  - https://www.dita-ot.org/download
+  - https://www.dita-ot.org/4.4/release-notes/
+  - https://www.dita-ot.org/4.4/topics/using-docker-images
+  - https://www.dita-ot.org/4.4/topics/using-project-files
+  - https://www.dita-ot.org/4.4/parameters/dita-command-arguments
+  - https://www.dita-ot.org/4.4/topics/plugins-registry
+  - https://www.dita-ot.org/4.4/topics/error-messages
+  - https://github.com/dita-ot/dita-ot/releases

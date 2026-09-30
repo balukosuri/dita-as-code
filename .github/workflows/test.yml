@@ -1,0 +1,228 @@
+name: Tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Python ${{ matrix.python }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python: ["3.8", "3.11", "3.13"]
+        exclude:
+          # 3.8 is not available on the current macOS runners.
+          - os: macos-latest
+            python: "3.8"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Confirm there are no dependencies to install
+        # DAC is standard library only, on purpose. If this ever stops being true it
+        # should be a deliberate decision, visible in a diff, rather than a drift.
+        run: |
+          test ! -f requirements.txt || (echo "requirements.txt appeared - see CONTRIBUTING.md" && exit 1)
+          test ! -f pyproject.toml   || (echo "pyproject.toml appeared - see CONTRIBUTING.md" && exit 1)
+
+      - name: Run the suite
+        # Must pass with no DITA toolkit present. Ambient tooling used to make several
+        # tests pass or fail depending on whether `dita` happened to be on PATH.
+        run: python fixtures/test_detection.py
+
+  with-toolkit:
+    name: With DITA-OT on PATH
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install DITA-OT 4.4.1
+        run: |
+          curl -fsSL -o dita-ot.zip \
+            https://github.com/dita-ot/dita-ot/releases/download/4.4.1/dita-ot-4.4.1.zip
+          unzip -q dita-ot.zip
+          echo "$PWD/dita-ot-4.4.1/bin" >> "$GITHUB_PATH"
+          echo "DITA_HOME=$PWD/dita-ot-4.4.1" >> "$GITHUB_ENV"
+
+      - name: Confirm the toolkit works
+        run: dita --version
+
+      - name: Run the suite with the toolkit available
+        # The same suite must pass in both environments. Findings about the machine must
+        # never change conclusions about the repository being scanned.
+        run: python fixtures/test_detection.py
+
+      - name: Build real DITA end to end
+        # Proves the generated pipeline actually produces output, rather than only that
+        # the generator ran. Uses a small, permissively licensed public DITA corpus.
+        run: |
+          git clone --depth 1 https://github.com/robander/metadita-sampledocs.git /tmp/sample
+          python scripts/dac.py audit --root /tmp/sample --skip-egress
+          test -f /tmp/sample/dac-audit.md
+          python scripts/interfaces.py --root /tmp/sample
+          cd /tmp/sample
+          ./scripts/docs stats
+          # The static check exits non-zero when it finds problems, which is correct
+          # behaviour for a gate, so do not let that fail the job here.
+          ./scripts/docs check --json > /tmp/check.json || true
+          python -c "import json; d=json.load(open('/tmp/check.json')); print('static check reported', d['count'], 'problem(s)')"
+
+  compatibility:
+    name: Python 3.8 syntax floor
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Every script must parse as Python 3.8
+        # CONTRIBUTING.md states 3.8 as the floor because that is what ships on older
+        # enterprise Linux. This enforces the claim rather than trusting it.
+        run: |
+          python - <<'PY'
+          import ast, glob, sys
+          bad = []
+          for f in sorted(glob.glob('scripts/*.py') + glob.glob('fixtures/*.py')
+                          + glob.glob('templates/interfaces/*.py')):
+              try:
+                  ast.parse(open(f, encoding='utf-8').read(), feature_version=(3, 8))
+              except SyntaxError as e:
+                  bad.append("%s:%s %s" % (f, e.lineno, e.msg))
+          for b in bad:
+              print("FAIL", b)
+          sys.exit(1 if bad else 0)
+          PY
+
+  packs:
+    name: Capability packs are valid
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install pyyaml
+      - name: Every pack parses and carries provenance
+        run: |
+          python - <<'PY'
+          import glob, sys, yaml
+          problems = []
+          for f in sorted(glob.glob('packs/*.yml')):
+              try:
+                  docs = [d for d in yaml.safe_load_all(open(f)) if d]
+              except Exception as e:
+                  problems.append("%s: %s" % (f, e)); continue
+              for d in docs:
+                  entries = d if isinstance(d, list) else [d]
+                  for e in entries:
+                      if not isinstance(e, dict):
+                          continue
+                      # A capability claim needs a source or an explicit admission that
+                      # it is unverified. See CONTRIBUTING.md.
+                      if e.get('id') and not e.get('docs') \
+                         and e.get('confidence') != 'unverified':
+                          problems.append(
+                              "%s: '%s' has neither docs URLs nor confidence: unverified"
+                              % (f, e['id']))
+          for p in problems:
+              print("FAIL", p)
+          print("checked %d pack(s)" % len(glob.glob('packs/*.yml')))
+          sys.exit(1 if problems else 0)
+          PY
+
+  templates:
+    name: Generated templates are valid
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install pyyaml
+      - name: YAML, JSON, XML and shell all parse
+        run: |
+          python - <<'PY'
+          import glob, json, re, sys, yaml, xml.dom.minidom as minidom
+          bad = []
+          for f in glob.glob('templates/**/*.yml', recursive=True):
+              try: yaml.safe_load(open(f))
+              except Exception as e: bad.append("%s: %s" % (f, e))
+          # VS Code settings and devcontainer.json are JSONC: comments are legal and
+          # the comments in ours carry load-bearing explanation. Strip them before
+          # validating rather than stripping them from the files.
+          def strip_jsonc(text):
+              text = re.sub(r'^\s*//.*$', '', text, flags=re.M)
+              return re.sub(r',(\s*[}\]])', r'\1', text)
+          for f in glob.glob('templates/**/*.json', recursive=True):
+              try: json.loads(strip_jsonc(open(f).read()))
+              except Exception as e: bad.append("%s: %s" % (f, e))
+          for f in (glob.glob('templates/**/*.xml', recursive=True)
+                    + glob.glob('templates/**/*.sch', recursive=True)):
+              try: minidom.parse(f)
+              except Exception as e: bad.append("%s: %s" % (f, e))
+          for b in bad: print("FAIL", b)
+          sys.exit(1 if bad else 0)
+          PY
+      - name: Shell templates are syntactically valid
+        run: |
+          for f in templates/scripts/*.sh templates/hooks/* templates/devcontainer/*.sh; do
+            [ -f "$f" ] && bash -n "$f" && echo "ok $f"
+          done
+
+  docs:
+    name: Documentation links resolve
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: No broken internal links, no unfilled placeholders
+        run: |
+          python - <<'PY'
+          import os, re, sys
+          problems = []
+          for dp, dirs, files in os.walk('.'):
+              if '/.git' in dp: continue
+              for fn in files:
+                  if not fn.endswith('.md'): continue
+                  p = os.path.join(dp, fn)
+                  body = open(p, encoding='utf-8').read()
+                  for m in re.finditer(r'\[[^\]]+\]\(([^)#]+)(#[^)]*)?\)', body):
+                      t = m.group(1).strip()
+                      if t.startswith(('http://', 'https://', 'mailto:')): continue
+                      if not os.path.exists(os.path.normpath(os.path.join(dp, t))):
+                          problems.append("%s -> %s" % (p, t))
+          # A shipped placeholder is a bug: see references/PLACEHOLDERS.md
+          for dp, dirs, files in os.walk('templates'):
+              for fn in files:
+                  p = os.path.join(dp, fn)
+                  try: body = open(p, encoding='utf-8').read()
+                  except (UnicodeDecodeError, IsADirectoryError): continue
+                  for m in re.finditer(r'\{\{([A-Z_]+)\}\}', body):
+                      if not os.path.exists('references/PLACEHOLDERS.md'): break
+                      if m.group(1) not in open('references/PLACEHOLDERS.md',
+                                                encoding='utf-8').read():
+                          problems.append("%s: undocumented placeholder {{%s}}"
+                                          % (p, m.group(1)))
+          for x in problems: print("FAIL", x)
+          sys.exit(1 if problems else 0)
+          PY

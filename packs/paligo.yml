@@ -1,0 +1,93 @@
+id: paligo
+display_name: Paligo
+archetype: [B]
+source_format: docbook            # NOT DITA. Confirmed with vendor documentation.
+last_verified: 2026-09-18
+confidence: high
+
+source_format_warning:
+  severity: critical
+  text: >
+    Paligo is DocBook 5.1, not DITA. Paligo's own marketing states the content model "is still
+    always based on open standard DocBook". Do NOT build a DITA pipeline against this content.
+    Converting DocBook to DITA is real XSLT work that DAC scopes but never performs.
+  vendor_quote: >
+    Paligo frames conversion onward explicitly: "you could get XSLT specialists to convert it into
+    a different type of XML" such as DITA.
+
+api:
+  base_url: https://{instance}.paligoapp.com/api/v2
+  auth: "Authorization: Basic base64(username:apikey)"
+  credentials_in_url_or_body: ignored
+  minimum_role: admin
+  minimum_role_note: >
+    "The Paligo user must be an admin user." No exceptions. Only admins can create or remove API
+    keys, and an admin can only see keys they created themselves. Licence permissions are shared
+    between API and UI, so the API cannot be used to escalate beyond a seat's role.
+    This is a HARD WALL, not a degradation - there is no author-level API path.
+  pagination: page / per_page, with next_page URL and total_pages in every list response
+  rate_limits:
+    business: ~50/min Show+List, ~10/min Create+Update, 1/min Productions Create
+    enterprise: up to 250/min Show+List, 20-100/min writes
+    on_breach: 429 with a Retry-After header in seconds
+    note: >
+      A full-corpus crawl must be politely throttled. Paligo reserves the right to suspend keys
+      for repeated abuse.
+
+export:
+  programmatic: true
+  high_fidelity_path: >
+    GET /documents/{id} returns a JSON object whose `content` field is the document XML, plus
+    uuid, parent_resource, taxonomies, languages and custom_attributes. Combined with /folders and
+    /documents listing, that is a complete DocBook 5.1 source dump.
+  published_output_path: GET /outputs/{name} returns published output as application/zip
+  trigger_publish: POST /productions/
+  lossy_warning: >
+    The DocBook 5.1 PUBLISH output "does not contain any metadata or information about text
+    fragments and variables". Variables and text-fragment reuse are GONE by the time you have that
+    XML. Use the API `content` field instead - it is higher fidelity than the documented export.
+
+git:
+  source_sync: false
+  actual_behaviour: output_only
+  vendor_quote: >
+    "A repository in GitHub. Paligo will upload published output to the repository. The output is
+    uploaded as a zip file."
+  consequence: >
+    This is a deployment hook dressed as source control. It gives no diffable source history
+    whatsoever. Correct any team who believes their Paligo content is "in Git".
+
+imports_from:
+  [dita, db5, db4, xhtml, confluence, flare, helpandmanual, docx, authorit, zendesk, openapi]
+  # Useful signal: Paligo is an on-ramp FROM DITA, not a DITA system.
+
+dita_ot:
+  runs_internally: false
+
+pricing:
+  business: from $15,000/year (2 authors, 2 languages, 10 GB storage per author, max 10
+            contributors/reviewers)
+  enterprise: custom (8 authors, unlimited contributors, 500 GB start)
+  api_availability: REST API is Professional plan and up
+
+detect:
+  env: [PALIGO_USERNAME, PALIGO_API_KEY]
+  url_pattern: https://<instance>.paligoapp.com
+  content_signatures:
+    - "http://docbook.org/ns/docbook"
+    - '-//OASIS//DTD DocBook V5.1//EN//XML'
+    - 'version="5.1"'
+  filename_patterns: ["publication--<lang>.xml"]
+  export_zip_naming: "<ID>-<Title>-<Format>.zip (default template is ID-Title-Format)"
+  export_layout: "publication--en.xml plus an image/ directory"
+  git_tell: >
+    A repository whose commits are almost entirely "add zip" means the Paligo GitHub integration is
+    wired as output-only.
+
+docs:
+  - https://paligo.net/docbook/
+  - https://docs.paligo.net/en/publish-as-docbook-xml.html
+  - https://api.paligo.net/en/index-en.html
+  - https://docs.paligo.net/en/paligo-rest-api.html
+  - https://docs.paligo.net/en/github-integration.html
+  - https://paligo.net/pricing/

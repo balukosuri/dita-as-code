@@ -1,0 +1,53 @@
+# Line-ending normalisation and diff behaviour for a DITA repository.
+#
+# Modelled on the .gitattributes in dita-ot/docs, which is the most battle-tested public
+# example of a DITA repo. Without this, a mixed Windows/macOS team produces diffs where
+# every line appears changed, which makes pull-request review useless.
+
+# Auto-detect text files and normalise line endings in the repository.
+*               text=auto
+
+# DITA and XML sources: always normalised text.
+*.dita*         text
+*.xml           text
+*.xsd           text
+*.xsl           text
+*.dtd           text
+*.ent           text
+*.mod           text
+*.sch           text
+*.rng           text
+*.rnc           text
+*.properties    text
+*.ditaval       text
+
+# Web assets.
+*.css           text
+*.js            text
+*.htm           text diff=html
+*.html          text diff=html
+*.md            text
+
+# Platform-specific line endings, regardless of the committer's OS.
+*.bat           text eol=crlf
+*.cmd           text eol=crlf
+*.sh            text eol=lf
+
+# Binary: never diff, never normalise. Git guessing wrong here corrupts files.
+*.png           binary
+*.jpg           binary
+*.jpeg          binary
+*.gif           binary
+*.ico           binary
+*.pdf           binary
+*.eot           binary
+*.otf           binary
+*.ttf           binary
+*.woff          binary
+*.woff2         binary
+
+# Authoring-tool binaries. Present so that a mixed estate does not get mangled.
+*.fm            binary
+*.book          binary
+*.mif           binary
+*.xac           binary

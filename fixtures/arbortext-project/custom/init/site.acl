@@ -1,0 +1,4 @@
+# Arbortext Command Language site customisation.
+# Processed LAST at startup, alphabetically. No nested subdirectories are supported.
+local $doc = current_doc()
+set insert_tag_dialog = on

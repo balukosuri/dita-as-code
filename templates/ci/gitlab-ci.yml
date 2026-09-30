@@ -1,0 +1,52 @@
+# DITA validate, build and publish on GitLab CI.
+#
+# Written by the DITA-as-Code Kit.
+
+default:
+  image:
+    name: ghcr.io/dita-ot/dita-ot:{{DITA_OT_VERSION}}
+    # Required. The image entrypoint already runs `dita`, so GitLab cannot start its own
+    # shell until the entrypoint is cleared.
+    entrypoint: [""]
+
+variables:
+  # DITA files reference public identifiers. Without a catalog, validation either fails or
+  # silently fetches DTDs over HTTP.
+  XML_CATALOG_FILES: /opt/app/catalog-dita.xml
+
+stages: [validate, build, deploy]
+
+validate:dita:
+  stage: validate
+  script:
+    - dita validate --input="{{ROOT_MAP}}" --processing-mode=strict --logger=json -v
+
+validate:references:
+  stage: validate
+  script:
+    # A green exit code does not prove reference integrity - see the GitHub template for why.
+    - dita --input="{{ROOT_MAP}}" --format=dita --output=/tmp/normalized -v 2>&1 | tee /tmp/refs.log
+    - |
+      if grep -Eq 'DOTJ041E|DOTJ046E|DOTX010E|DOTX028E' /tmp/refs.log; then
+        echo "Broken conref, conkeyref or link target detected."
+        grep -E 'DOTJ041E|DOTJ046E|DOTX010E|DOTX028E' /tmp/refs.log
+        exit 1
+      fi
+
+build:docs:
+  stage: build
+  script:
+    - dita --project=config/dita-ot-project.xml --output=out -v
+  artifacts:
+    paths: [out/]
+    expire_in: 1 week
+
+pages:
+  stage: deploy
+  script:
+    - dita --project=config/dita-ot-project.xml --output=public -v
+  pages: true
+  artifacts:
+    paths: [public]
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

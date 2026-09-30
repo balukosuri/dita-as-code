@@ -1,0 +1,92 @@
+id: arbortext
+display_name: PTC Arbortext Editor + Publishing Engine
+archetype: [A]                    # promote to [A, E] on evidence of e3config.xml or a PE endpoint
+source_format: dita
+last_verified: 2026-09-18
+confidence: medium
+
+current_version: 8.3.3.0          # Editor / Styler / PE, released 2026-06-09
+
+authoring:
+  headless: false
+  batch_mode: partial
+  batch_invocation: 'editor.exe -c "<ACL command>" <file>'
+  batch_note: >
+    This still launches the GUI application. It is batch invocation of a desktop product, not a
+    daemon. PTC guidance and community practice is to keep the -c payload trivial and put real
+    logic in an ACL function.
+  batch_acl_functions:
+    [compose_for_pdf, compose_for_web, compose_for_html, compose_using_xsl, document_export]
+  automation_note: >
+    DAC does not automate the editor. Content lands on disk as DITA; everything downstream is
+    archetype A.
+
+render_service:
+  type: arbortext_pe
+  transport: http
+  runtime: Java servlet under Tomcat, fronted by a Request Manager
+  # CORRECTION: f=compose does not exist. It occurs zero times in the 8.3.1 Programmer's Guide.
+  operations: [acl, java, javascript, vbscript, convert, init, status, qt, q, app, version,
+               license, compconfig]
+  publish_actually_is: "f=java&class=com.arbortext.e3c.Application with a JAR of the input
+                        directory as the request body"
+  document_conversion: f=convert
+  auth: site-specific             # probe required; PTC documents no standard scheme
+  authorisation_model: >
+    e3config.xml contains an AllowedFunctions element listing ClientFunction entries with a
+    `pattern` (supporting ? and *) and a `type` (java/javascript/acl/vbscript). If the requested
+    function or class does not match, PE returns an error. So "can I call PE?" is answered by
+    whether an admin allowlisted your function, NOT by credentials. This is a distinctive blocker
+    shape and needs its own card.
+
+dita_ot:
+  runs_internally: false
+  note: >
+    PE composes via the Arbortext Formatting Engine and Styler stylesheets, not DITA-OT. Output
+    from PE and output from local DITA-OT differ by design, not by version drift. Say this plainly
+    in any degrade path.
+
+cms_backend:
+  optional: windchill
+  note: publishing via WVS if wired to PE
+
+detect:
+  files: ["*.acl", "*.dcf", "*.style", "e3config.xml"]
+  dirs: ["custom/init", "custom/scripts", "custom/classes", "custom/editinit"]
+  env: [APTCUSTOM]
+  install_paths:
+    windows: ["C:\\Program Files\\PTC\\Arbortext Editor\\bin\\x64\\editor.exe"]
+  cache: "%LOCALAPPDATA%\\PTC\\Arbortext\\Editor\\.aptcache\\zc\\<n>"
+  notes:
+    - custom/init is processed LAST at startup, alphabetically, with no nested subdirectories.
+    - custom/editinit is skipped when Editor runs with -c.
+    - APTCUSTOM points at a relocated custom tree whose internal layout must match the install.
+
+gotchas:
+  - id: no-f-compose
+    severity: high
+    text: >
+      f=compose does not exist. Any pack, script or documentation claiming it is wrong and will
+      produce a failing integration.
+  - id: pe-allowlist-not-credentials
+    severity: high
+    text: >
+      PE access is governed by the AllowedFunctions allowlist in e3config.xml. Valid credentials
+      with a non-allowlisted function still fail. Read e3config.xml before attempting a call.
+  - id: pe-endpoint-undocumented
+    severity: medium
+    text: >
+      PE endpoints are site-configured. Probe, do not assume. If PE is unreachable, degrade to
+      local DITA-OT and state clearly that output will differ from the Arbortext-composed PDF.
+
+morale_note: >
+  Arbortext shops are usually much closer to docs-as-code than they believe. The editor is
+  GUI-only and unscriptable, but it writes real DITA to disk, so the entire pipeline downstream of
+  the save is available to them today.
+
+docs:
+  - https://support.ptc.com/help/arbortext/r8.3.1.0/en/editor/baggage/pe_prog_guide.pdf
+  - https://support.ptc.com/help/arbortext/r8.2.3.0/en/PE/peprog/pe3110.html
+  - https://support.ptc.com/help/arbortext/r8.2.3.0/en/PE/peprog/the_f_acl_request.html
+  - https://support.ptc.com/help/arbortext/r8.3.1.0/en/admin/contentpipeline/running_standard_publishing_processes_with_acl.html
+  - https://support.ptc.com/help/arbortext/r8.2.0.0/en/Program/programmer_ref/help5047.html

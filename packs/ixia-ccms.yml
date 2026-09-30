@@ -1,0 +1,114 @@
+id: ixia-ccms
+display_name: MadCap IXIA CCMS (formerly IXIASOFT)
+archetype: [B]
+source_format: dita
+last_verified: 2026-09-18
+confidence: high
+
+api:
+  base_url: <ccms_url>/rest/1.0
+  example: https://ccms.acme.com/ixiasoft-ccms/rest/1.0/<endpoint>
+  login: "PUT /sessions/authorize?userId=<user> with the password in the JSON body's `data` field"
+  session: replay the IxiaAuth cookie from the login response
+  response_envelope: [error, events, timers, result]
+  config_access: read_only
+
+vendor_caveats:
+  quotes:
+    - "does not yet cover all the functionality of the CCMS"
+    - "cannot guarantee that the API will remain backward compatible with each new release"
+    - >
+      API support "is not part of the technical support of IXIA CCMS. It is covered as part of
+      your monthly Customer Care hours."
+  note: >
+    Quote these to the writer verbatim. An unusually blunt set of vendor caveats is itself
+    decision-relevant information, and softening it does them no favours.
+
+export:
+  programmatic: true
+  mechanism: a transformation scenario named "Export"
+  returns: >
+    A ZIP with raw DITA under content\authoring plus per-object .properties, .customproperties and
+    .indexedcontent sidecars.
+  ditaval_applied: false
+  dita_ot_involved: false
+  default_permission: System Administrator only
+
+round_trip:
+  supported: false
+  vendor_statement: >
+    "MadCap Software does not recommend exporting content from CCMS Desktop with the intention of
+    performing external edits and re-import... The re-import is an overwrite, not a merge."
+  consequence: >
+    This hard-codes the one-way ADR. CCMS -> Git only. Do not present two-way as an option.
+
+git:
+  source_sync: none
+
+dita_ot:
+  runs_internally: true
+  component: Output Generator
+  packaged_version: 2.5.4         # 2.3.1 if Collaborative Review is used
+  java_required: JDK 11, 64-bit
+  java_config: "%OutputGenDir%/conf/wrapper.conf -> wrapper.java.command"
+  java_version_visible_in: "%OutputGenDir%/logs/wrapper.log"
+
+gotchas:
+  - id: http-200-on-bad-credentials
+    severity: high
+    text: >
+      An invalid username/password, or a user missing from users.xml, returns HTTP 200 with error
+      code -10021. A probe that only checks status codes will report a false success. Always parse
+      the `error` field.
+  - id: nine-year-toolkit-gap
+    severity: high
+    text: >
+      The default packaged DITA-OT is 2.5.4 against current 4.4.1 - roughly a nine-year gap.
+      Expect CCMS and local builds to diverge substantially.
+  - id: disk-shows-a-fraction
+    severity: high
+    text: >
+      Only unreleased or locked content lives on disk. Released content sits in the server-side
+      TEXTML Content Store, so a filesystem scan sees a fraction of the corpus and any
+      disk-derived inventory is a severe undercount.
+  - id: external-id-disables-filename-matching
+    severity: medium
+    text: >
+      If filenames are not stable across export cycles you must configure an external ID via
+      <resourceid appname="external_id"> plus XPath in importManager.xml. Once enabled, filename
+      matching is disabled ENTIRELY and objects without an external ID are treated as new.
+
+detect:
+  files: [preferences.properties, importManager.xml, users.xml, outputtypes.xml,
+          preprocessors.xml, conductor-ixia.xml, CMSServerService.config]
+  extensions: [".indexedcontent", ".customproperties"]
+  install_paths:
+    windows: ["C:\\ixiasoft-ccms\\<instance>", "C:\\Ixiasoft\\ccms"]
+    linux: ["/opt/ixiasoft/ccms"]
+  eclipse_perspective: com.ixiasoft.dita.eclipse.gui.perspective.DitaPerspective
+  workspace_locator: osgi.instance.area
+  topology_from_preferences_properties:
+    - com.ixiasoft.eclipse.dita/textml.hostname
+    - textml.port                 # default 2500 (2551 also seen)
+    - textml.docbase
+    - textml.domain
+    - outputGenerator.hostname
+    - outputGenerator.port        # default 1500, callback 1501
+  note: >
+    preferences.properties yields the entire topology without credentials. It is the single highest
+    value file to read on an IXIA client machine.
+  export_signature: "content\\authoring\\ with .properties / .customproperties / .indexedcontent"
+
+server_collections:
+  content: [authoring, bmanifests, localization, projects, published, snapshots]
+  system: [catalogs, conf, dicts, DTD, ext, oxygen_cfg, plugins, taxonomies, templates,
+           webplatform, XSL]
+  map_templates: /system/templates/maps
+  exported_map_naming: renamed to a numeric system name with a .ditamap suffix
+
+docs:
+  - https://documentation.ixiasoft.com/ixia_ccms_rest-api-7.7-en/Content/hyv1760710764814/gpi1713990262255.html
+  - https://documentation.ixiasoft.com/ixia_ccms_rest-api-7.7-en/Content/hyv1760710764814/xaf1719939902432.html
+  - https://www.ixiasoft.com/documentation/IXIASOFT_CCMS/7.4/User_Guides_Advanced_IA_DRM/en/dok1707960985813.html
+  - https://www.ixiasoft.com/documentation/IXIASOFT_CCMS/7.5/IXIA_CCMS_InstallUpgrade/en/tis1707931834211.html
+  - https://www.ixiasoft.com/documentation/IXIASOFT_CCMS/7.5/IXIA_CCMS_OutGen_Scheduler/en/jma1722375415357.html

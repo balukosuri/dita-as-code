@@ -1,0 +1,88 @@
+id: madcap-flare
+display_name: MadCap Flare
+archetype: [C]
+source_format: xhtml              # NOT DITA
+last_verified: 2026-09-18
+confidence: high
+
+source_format_warning: >
+  Each topic is a separate XHTML file with an .htm extension, stored under the project's Content
+  folder. Anyone who assumes a Flare shop is a DITA shop will build entirely the wrong pipeline.
+
+git:
+  source_sync: true
+  providers: [git, perforce_helix_core, subversion, tfs]
+  branching_in_ui: git only
+  note: >
+    CORRECTION to the usual archetype C framing: Flare's Git integration is genuinely
+    first-class and built in. Flare Online is Git behind the scenes. MadCap's own docs describe
+    running GitFlow internally. Flare shops very likely already have version control - what they
+    lack is semantic diffs and component reuse, not source control. Say that precisely.
+  gitignore_excludes: [Analyzer, FileSync, Output, Project/Users]
+  first_bind_requirement: >
+    When first binding to Git the remote repository must be EMPTY. A repo created with a README or
+    .gitignore causes problems.
+
+cli:
+  binary: madbuild.exe
+  location: under the "Flare Desktop.app" folder in Program Files
+  args: [-project, -target, -batch, -credentials, -credentials-file, -centralUsername,
+         -centralPassword, -export, -settings]
+  note: >
+    Does not require opening Flare. Arguments can be moved into a JSON config file to avoid
+    command-line length limits. Credentials go in a JSON file rather than inline.
+
+platform: windows_only
+
+gotchas:
+  - id: vm-activation-hazard
+    severity: high
+    text: >
+      Flare deactivates itself when a VM's hardware fingerprint changes, so ephemeral CI runners
+      fail with an inactivated-licence error even though Flare was activated the day before.
+      The fix IS vendor-documented - madbuild -activate / -deactivate - but it "is available only
+      for customers with enterprise floating licenses" and requires a license.json containing an
+      enterprise floating LicenseKey at the root of the Flare Desktop.app folder. So the correct
+      blocker card is "obtain a floating licence", not "do not use CI". Pin the runner otherwise.
+  - id: antivirus-breaks-builds
+    severity: medium
+    text: >
+      An antivirus scanner touching the Output folder mid-build is a documented cause of
+      "Build Failed". Add an exclusion when setting up a runner.
+  - id: generated-dirs-committed
+    severity: medium
+    text: >
+      If Analyzer, FileSync, Output or Project/Users appear in the repository, the .gitignore is
+      wrong and the repo is carrying build artefacts.
+
+separate_skus:
+  - capability: enterprise floating licence
+    why_needed: the only licence supporting madbuild -activate, and therefore unattended CI
+    price: quote-gated; Flare Desktop is around $3,150/author/year (third-party figure, Aug 2026)
+    note: Perpetual licences ended in 2023. Subscription only.
+
+ceiling:
+  reachable: [git, ci, linting, automated_publishing]
+  not_reachable: [semantic_diffs, component_reuse, schema_validation]
+  honesty_requirement: >
+    Do not claim Flare is fully docs-as-code. It is not. State what is reachable and what is not.
+
+detect:
+  files: ["*.flprj", "*.fltoc", "*.fltar", "*.flskn", "*.flvar", "*.flmsp", "*.flpgl",
+          "license.json"]
+  dirs: ["Content", "Content/Resources", "Project/TOCs", "Project/Targets", "Project/Skins",
+         "Project/ConditionTagSets", "Project/VariableSets", "Project/Destinations"]
+  generated_dirs: [Analyzer, FileSync, Output, Project/Users]
+  flprj_root_element: "<CatapultProject Version=\"1\" ...>"
+  flprj_attributes: [MasterStylesheet, MasterPageLayout, MasterToc, IncludePattern,
+                     SourceControlBound, PreviewConditionalExpression]
+  flprj_child_blocks: [Files, CollectedSourceFiles, SkippedSourceFiles, GeneratedFiles]
+  floating_licence_probe: license.json at the root of Flare Desktop.app
+
+docs:
+  - https://docs.madcapsoftware.com/flare2026/Flare-Topics-Guide.pdf
+  - https://help.madcapsoftware.com/flare2026/Content/Flare/Architecture/External-Architecture/Source-Control.htm
+  - https://help.madcapsoftware.com/flare2026/Content/Flare/Project-Management/Source-Control/Git/Process/Binding-Project-Source-Control-Git.htm
+  - https://help.madcapsoftware.com/flare2026/Content/Flare/Step5-Building-Publishing-Output/Building-Targets-Using-Command-Line/Building-Targets-Using-Command-Line.htm
+  - https://help.madcapsoftware.com/flare2025/Content/Flare/Misc/Activating-Flare-Command-Line.htm
+  - https://docs.madcapsoftware.com/flare2026/Flare-Folders-Files-Cheat-Sheet.pdf

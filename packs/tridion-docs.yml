@@ -1,0 +1,87 @@
+id: tridion-docs
+display_name: RWS Tridion Docs
+archetype: [B, E]
+source_format: dita
+last_verified: 2026-09-18
+confidence: medium
+
+legacy_names: [Trisoft, InfoShare, SDL LiveContent Architect, SDL Knowledge Center,
+               SDL Tridion Docs]
+
+api:
+  generations_coexisting: 3
+  modern:
+    spec: OpenAPI 3.0
+    base_url: https://<host>/ISHWS/api
+    swagger_ui: /ISHWS/api/api-docs/index.html
+    openapi_json: /ISHWS/api/api-docs/v3/openapi.json
+    public_readonly_copy: https://developers.rws.com/tridion-docs-api-docs/api/15.2/
+  legacy: [WCF .SVC, .ASMX]
+  auth:
+    "15.x": OpenID Connect - client credentials (ClientId/ClientSecret from Access Management /
+            ISHAM) or Authorization Code + PKCE via system browser
+    "14SPx and earlier": WcfSoapWithWsTrust with username/password
+    common_error: >
+      Supplying username/password against 15.x fails with
+      "GetTokensOverClientCredentialsAsync Access Error[invalid_client]". This is a very common
+      misconfiguration - the service-account route is client credentials.
+
+cli:
+  name: ISHRemote
+  kind: PowerShell module, officially RWS-maintained
+  install: Install-Module ISHRemote
+  session: >
+    New-IshSession -Protocol OpenApiWithOpenIdConnect -WsBaseUrl ... -ClientId ... -ClientSecret ...
+  version_pin:
+    severity: medium
+    text: ISHRemote 8.1 fails to load under PowerShell 7.6/.NET 10. 8.2 is required.
+
+publishing:
+  mechanism: metadata write, not a build endpoint
+  procedure: >
+    Set FISHPUBSTATUS on a PublicationOutput object to VPUBSTATUSPUBLISHPENDING, then POLL the
+    same field until it leaves VPUBSTATUSPUBLISHING.
+  terminal_states: [VPUBSTATUSPUBLISHEDDRAFT, VPUBSTATUSRELEASED, VPUBSTATUSPUBLISHINGFAILED]
+  completion_callback: none documented
+  workarounds: [polling, a custom publish post-process plug-in, the EventMonitor API]
+
+delivery_side:
+  product: Dynamic Experience Delivery (DXD)
+  api: GraphQL Content API (for example an ishTopic query exposing DITA structure)
+  auth: OAuth2
+  note: >
+    This, not the authoring API, is what an agent should query for content. It is also the only
+    realistic backend for an MCP-style content tool in this ecosystem.
+
+git:
+  source_sync: none
+
+dita_ot:
+  runs_internally: false
+  note: Publishing is its own engine. The version is not exposed.
+
+gotchas:
+  - id: api-surface-shifts-between-releases
+    severity: medium
+    text: >
+      RWS publishes a dedicated "Web Services API compatibility across releases" guide, which means
+      the API surface shifts between 14, 15, 15.1 and 15.2. A pack must record the tenant version
+      and a probe must read it before generating any call.
+  - id: no-publish-completion-signal
+    severity: medium
+    text: >
+      Because there is no completion callback, a naive CI job either polls forever or declares
+      success before publishing finishes.
+
+detect:
+  url_patterns: ["/ISHWS/"]
+  content_patterns: [FISHPUBSTATUS, FISHMASTERREF, FISHRESOURCES, FISHPUBCONTEXT, VPUBSTATUS,
+                     ISHRemote, New-IshSession]
+  files: [Publish.wsf]
+  powershell: "Get-Module -ListAvailable ISHRemote"
+
+docs:
+  - https://docs.rws.com/en-US/tridion-docs-main-documentation-1165616/api-3-0-classes-1159181
+  - https://github.com/RWS/ISHRemote
+  - https://github.com/RWS/ISHRemote/releases/tag/v8.0
+  - https://community.rws.com/product-groups/tridion/tridion-docs/f/forum/27552/publishing-apis-help

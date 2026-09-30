@@ -1,0 +1,2 @@
+# Batch publishing helpers. Sourced from custom/init.
+function do_publish() { compose_for_pdf(current_doc(), "") }

@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<importManager>
+  <resourceid appname="external_id"><xpath>/*/@id</xpath></resourceid>
+</importManager>

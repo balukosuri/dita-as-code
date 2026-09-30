@@ -1,0 +1,54 @@
+{
+  // Editor-side DITA validation using the Red Hat XML extension (lemminx).
+  //
+  // Why this extension: it has over ten million installs and is actively maintained. It is
+  // the credible free validation layer for DITA. DitaCraft is the only purpose-built DITA
+  // extension but has roughly 1,200 installs and shares a sole maintainer with the Gradle
+  // plugin, so it is offered as optional rather than assumed.
+  //
+  // IMPORTANT: this is validation and navigation tooling, not an authoring environment.
+  // Keep authoring in Oxygen, Arbortext or XMetaL. There is no rich DITA authoring
+  // experience in VS Code and it would be dishonest to imply one.
+  //
+  // BOTH non-default settings below are REQUIRED, and neither is discoverable:
+  //
+  //  - resolveExternalEntities: without it, modular DITA DTDs silently fail to resolve and
+  //    you get no validation at all while appearing to be configured.
+  //
+  //  - entityExpansionLimit: modern DITA DTDs blow past the JDK's 64,000-entity default,
+  //    which breaks IntelliSense on the root element with "The parser has encountered more
+  //    than 64,000 entity expansions".
+
+  "xml.catalogs": ["{{DITA_HOME}}/catalog-dita.xml"],
+  "xml.validation.enabled": true,
+  "xml.validation.resolveExternalEntities": true,
+  "xml.server.vmargs": "-Djdk.xml.entityExpansionLimit=128000 -Xmx1G",
+
+  "xml.format.enabled": false,
+  // Formatting is owned by Prettier with @prettier/plugin-xml so that the editor, the
+  // pre-commit hook and CI all produce byte-identical output. Two formatters fighting each
+  // other produces churn in every diff.
+
+  "files.associations": {
+    "*.dita": "xml",
+    "*.ditamap": "xml",
+    "*.ditaval": "xml",
+    "*.bookmap": "xml",
+    "*.sch": "xml"
+  },
+
+  "[xml]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+
+  "files.trimTrailingWhitespace": false,
+  // DITA is whitespace-sensitive in mixed content. Trimming trailing whitespace inside
+  // elements like <ph> or <uicontrol> can change rendered spacing.
+
+  "search.exclude": {
+    "out/": true,
+    "temp/": true,
+    ".gradle/": true
+  }
+}

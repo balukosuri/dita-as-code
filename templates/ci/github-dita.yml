@@ -1,0 +1,128 @@
+# DITA validate, build and publish.
+#
+# Written by the DITA-as-Code Kit.
+#
+# ADOPT, DON'T IMPOSE: if this repository already has a workflow that builds DITA, extend
+# that one instead of adding this file. Two workflows means two builds on every push, and
+# if the existing workflow has a format check, adding a formatter here will make it fail.
+
+name: Docs
+
+on:
+  push:
+    branches: ["{{DEFAULT_BRANCH}}"]
+  pull_request:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+env:
+  # Pinned deliberately. Match the version your editor bundles so local and CI output agree:
+  # Oxygen 28.1 bundles 4.4.0, XMetaL 20.0 bundles 4.2.2 XM.
+  DITA_OT_VERSION: "{{DITA_OT_VERSION}}"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/dita-ot/dita-ot:{{DITA_OT_VERSION}}
+      # The image ENTRYPOINT already runs `dita`, so it must be cleared for the shell to work.
+      options: --entrypoint ""
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Point the XML parser at the DITA catalog
+        # Without this, DITA files referencing public identifiers either fail to validate or
+        # silently fetch DTDs over HTTP, which is slow, irreproducible, and impossible offline.
+        run: echo "XML_CATALOG_FILES=/opt/app/catalog-dita.xml" >> "$GITHUB_ENV"
+
+      - name: Validate DITA sources
+        # --processing-mode=strict turns warnings that indicate real breakage into failures.
+        run: |
+          dita validate \
+            --input="{{ROOT_MAP}}" \
+            --processing-mode=strict \
+            --logger=json -v
+
+      - name: Check links and references
+        # A green `dita` exit code is NOT sufficient evidence of reference integrity.
+        # Unresolved conrefs in the PDF preprocess stage were silent until a 2023 fix, and
+        # keyrefs inside conrefs went unresolved for several releases. Fail on the specific
+        # diagnostic codes that indicate a broken reference.
+        run: |
+          set -o pipefail
+          dita --input="{{ROOT_MAP}}" --format=dita --output=/tmp/normalized -v 2>&1 \
+            | tee /tmp/refs.log
+          if grep -Eq 'DOTJ041E|DOTJ046E|DOTX010E|DOTX028E' /tmp/refs.log; then
+            echo "::error::Broken conref, conkeyref or link target detected."
+            grep -E 'DOTJ041E|DOTJ046E|DOTX010E|DOTX028E' /tmp/refs.log
+            exit 1
+          fi
+
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      # Deterministic XML formatting is what makes DITA diffs reviewable in a pull request.
+      - run: npm run format:check
+
+  style:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/dita-ot/dita-ot:{{DITA_OT_VERSION}}
+      options: --entrypoint ""
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Vale
+        # 3.22.0 is a floor, not a preference: TokenIgnores and BlockIgnores only work on
+        # DITA from that version onward, so below it you cannot suppress a false positive.
+        run: |
+          curl -sL https://github.com/errata-ai/vale/releases/download/v3.22.0/vale_3.22.0_Linux_64-bit.tar.gz \
+            | tar xz -C /usr/local/bin vale
+      - name: Lint prose
+        # Vale drives the `dita` command internally and lints the resulting HTML, so DITA-OT
+        # must be on PATH. Note .ditamap is NOT a supported extension - map-level prose is
+        # not covered by this step.
+        run: vale --glob='*.dita' {{SOURCE_DIR}}
+
+  build:
+    needs: [validate, format]
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/dita-ot/dita-ot:{{DITA_OT_VERSION}}
+      options: --entrypoint ""
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build all deliverables
+        # The project file carries the ditaval filter for each deliverable. Building without
+        # the right filter emits conditional content into the wrong output AND STILL EXITS
+        # ZERO, so the project file is what keeps the build honest.
+        run: dita --project=config/dita-ot-project.xml --output=out -v
+      - uses: actions/upload-artifact@v4
+        with:
+          name: docs-output
+          path: out/
+
+  publish:
+    needs: build
+    if: github.ref == 'refs/heads/{{DEFAULT_BRANCH}}'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: docs-output
+          path: out
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: out/{{PRIMARY_DELIVERABLE}}
+      - id: deployment
+        uses: actions/deploy-pages@v4

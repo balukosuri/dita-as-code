@@ -1,0 +1,52 @@
+#!/usr/bin/env sh
+# Pre-commit hook for a DITA repository.
+#
+# Two jobs, both fast, both on staged files only:
+#
+#   1. Normalise XML formatting, so the diff your reviewer sees is a content diff rather
+#      than a whitespace diff.
+#   2. Catch malformed XML before it reaches CI, because a two-second check here saves a
+#      three-minute round trip there.
+#
+# Deliberately NOT done here: full validation, link checking, prose linting. Those need the
+# whole map resolved and take too long to sit in a commit. They run in CI.
+#
+# DESIGN NOTE: this hook is stateless. DITA For Small Teams, the pioneering DITA-as-code
+# project, wired client-side Git hooks to a stateful BaseX XQuery database and that
+# dependency is a large part of why it died. Anything needing a server belongs in CI.
+
+set -e
+
+STAGED_XML="$(git diff --cached --name-only --diff-filter=ACM \
+  | grep -E '\.(dita|ditamap|bookmap|ditaval|xml)$' || true)"
+
+[ -z "$STAGED_XML" ] && exit 0
+
+# ---- 1. format ------------------------------------------------------------------------
+if [ -f package.json ] && command -v npx >/dev/null 2>&1; then
+  echo "pre-commit: formatting staged XML"
+  # lint-staged re-stages what it rewrites, so the commit contains the formatted version.
+  npx --no-install lint-staged || {
+    echo "pre-commit: formatting failed. Run 'npm run format' and try again." >&2
+    exit 1
+  }
+fi
+
+# ---- 2. well-formedness ---------------------------------------------------------------
+if command -v xmllint >/dev/null 2>&1; then
+  echo "pre-commit: checking XML well-formedness"
+  FAILED=""
+  for f in $STAGED_XML; do
+    [ -f "$f" ] || continue
+    # --nonet matters: without it, a DTD reference can make this hook hang on a slow or
+    # filtered network while xmllint tries to fetch the grammar over HTTP.
+    xmllint --noout --nonet "$f" 2>/dev/null || FAILED="$FAILED $f"
+  done
+  if [ -n "$FAILED" ]; then
+    echo "pre-commit: malformed XML in:$FAILED" >&2
+    echo "Fix these before committing. To bypass in an emergency: git commit --no-verify" >&2
+    exit 1
+  fi
+fi
+
+exit 0

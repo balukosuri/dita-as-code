@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Deliverables as declarative data rather than build logic buried in a script.
+
+  Two reasons this file matters more than it looks:
+
+  1. Every deliverable names its own ditaval. A build that leaves the filter argument off
+     emits conditional content into the wrong output AND STILL EXITS ZERO. DITA-OT does not
+     warn you. This file is what makes that mistake impossible to make by accident.
+
+  2. It is machine-readable, so the team's AI IDE can answer "what do we publish, and with
+     which filters?" without anyone reverse-engineering a shell script.
+
+  Validate this file with jing against resources/project.rnc in your DITA-OT installation.
+  Do NOT use xmllint - it is not a dependable RELAX NG validator.
+
+      jing -c "$DITA_HOME/resources/project.rnc" config/dita-ot-project.xml
+
+  PATH RESOLUTION - the two rules differ, which is a documented source of confusion.
+  Both were verified against DITA-OT 4.4.1:
+
+    input/@href    resolves relative to THIS FILE'S directory. With the project file in
+                   config/, a map at the repository root is "../your.ditamap".
+
+    output/@href   resolves relative to the output directory given on the command line,
+                   NOT relative to this file. So output href="html5" with an output
+                   directory of "out" produces out/html5.
+
+  SCHEMA CONSTRAINTS worth knowing before you edit:
+
+    - A context referenced by idref accepts the idref attribute ONLY. It cannot have
+      children, so a profile cannot be attached to it.
+    - profile therefore belongs inside publication, and must come AFTER any param
+      elements. Putting it before them is a schema violation.
+    - deliverable requires exactly this order: context, output, publication.
+-->
+<project xmlns="https://www.dita-ot.org/project">
+
+  <!--
+    Reusable input context. Reference it by idref from any deliverable.
+
+    The href is relative to THIS FILE'S directory, so with the project file in config/ a
+    map at the repository root is "../your.ditamap". The placeholder carries the whole
+    path including any "../" - do not add another prefix when filling it, or you get
+    "../../" and a DOTA069F "input resource cannot be located" that points at a directory
+    above the repository.
+  -->
+  <context id="main">
+    <input href="{{ROOT_MAP_FROM_PROJECT}}"/>
+  </context>
+
+  <deliverable id="html" name="Online help (HTML5)">
+    <!--
+      A context referenced by idref takes no children - the schema allows the idref
+      attribute only. The conditional filter therefore belongs to the publication, where
+      it must come AFTER any param elements.
+    -->
+    <context idref="main"/>
+    <output href="html5"/>
+    <publication transtype="html5">
+      <param name="args.gen.task.lbl" value="YES"/>
+      <param name="nav-toc" value="partial"/>
+      <profile>
+        <ditaval href="{{HTML_DITAVAL}}"/>
+      </profile>
+    </publication>
+  </deliverable>
+
+  <deliverable id="pdf" name="PDF manual">
+    <context idref="main"/>
+    <output href="pdf"/>
+    <publication transtype="pdf">
+      <param name="args.rellinks" value="none"/>
+      <profile>
+        <ditaval href="{{PDF_DITAVAL}}"/>
+      </profile>
+    </publication>
+  </deliverable>
+
+  <!--
+    Add further deliverables here, then build a single one by passing its id to
+    scripts/build.sh, for example: scripts/build.sh html
+
+    Runnable commands are deliberately not written in this file. XML comments cannot
+    legally contain a double hyphen, so any command line with long options would be
+    corrupted here and would fail when copied. See docs/RUNBOOK.md for the real commands.
+
+    Note that selecting an individual deliverable is supported only from DITA-OT 4.4 onward.
+  -->
+</project>

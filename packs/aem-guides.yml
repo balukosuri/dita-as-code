@@ -1,0 +1,91 @@
+id: aem-guides
+display_name: Adobe Experience Manager Guides (XML Documentation for AEM)
+archetype: [B]
+source_format: dita
+last_verified: 2026-09-18
+confidence: medium
+
+api:
+  families: [Java OSGi (service JAR added to pom.xml), REST]
+  swagger: https://<host>/libs/fmdita/clientlibs/api-docs/index.html
+  swagger_ui_path: Tools -> Guides -> API Swagger
+  rest_coverage: [Assets, Baseline, Reporting, Translation, Publishing]
+  rest_coverage_note: Only these five appear in Swagger. The REST surface is partial.
+  endpoints:
+    - POST /bin/guides/v1/output/generate
+    - POST /bin/guides/v1/translation/reference/baseline/export
+  cloud_auth:
+    scheme: Adobe IMS OAuth Server-to-Server
+    headers: ["Authorization: Bearer <access_token>", "X-Api-Key: <ClientID>"]
+    provisioned_in: Adobe Developer Console
+    note: >
+      This is not an AEM local account. Creating these credentials is an Adobe-admin/IT task, not
+      writer self-serve. Treat it as a guaranteed blocker card with a named recipient.
+
+# THE defining characteristic of this vendor, and the thing most likely to cause silent damage.
+uuid_referencing:
+  builds: [uuid, non_uuid]
+  adobe_statement: >
+    In UUID builds "all content references are created based on their UUID", references are "path
+    independent", and moving assets requires no reference patching.
+  what_it_breaks:
+    severity: critical
+    text: >
+      A filename- or path-based link checker run over exported content will PASS TRIVIALLY and tell
+      you nothing, because the link targets are not paths. A green link check on UUID content is
+      meaningless. Link integrity must be verified against UUID resolution instead, which needs a
+      bespoke checker that cannot share code with the other archetypes.
+  default_regex: "^GUID-(?.*)"
+  regex_property: uuid.regex on PID com.adobe.fmdita.config.ConfigManager
+  detection_caveat: >
+    AEM Guides ships in both UUID and non-UUID variants, so path-based references are also
+    legitimate. Absence of UUID filenames does not mean "not AEM".
+
+git:
+  source_sync: false
+  actual_behaviour: inbound_only
+  introduced: 2026.08.0 cloud release
+  direction: imports content FROM a Git repo INTO AEM Guides
+  features: [crawl/sync, gitignore-aware filtering, GUID preservation on re-fetch,
+             conflict resolution]
+  auth: Personal Access Token only
+  config: repository URL, branch, target AEM root path, inclusion/exclusion filters
+  warning: >
+    The name misleads. This is a migration and ingestion tool, NOT a mirror of AEM content into
+    Git. Anyone reading the release-note headline will get the direction backwards.
+
+dita_ot:
+  runs_internally: true
+  shipped_version: 3.3.2
+  supported_range: "1.7 - 4.x"
+  custom_toolkit: via a Profile, uploaded to the AEM repository or referenced on the server
+  pdf_default_engine: Native PDF (CSS-based)
+  pdf_warning:
+    severity: high
+    text: >
+      Native PDF is the DEFAULT PDF method in current versions, so the reference PDF is not a
+      DITA-OT product at all. A local DITA-OT PDF build will never match it. The version-drift
+      conversation for AEM is not 3.3.2 versus 4.4.1 - it is that a completely different engine
+      produces the output of record. Decide which one is authoritative before automating.
+
+detect:
+  filename_patterns: ["GUID-<uuid>.dita", "GUID-<uuid>.ditamap", "GUID-<uuid>.png"]
+  repository_paths: ["/apps/fmdita/", "/etc/fmdita/dita_resources/DITA-OT.zip",
+                     "/libs/fmdita/clientlibs/api-docs/", "/content/dam/<project>/"]
+  osgi_pids: [com.adobe.fmdita.config.ConfigManager,
+              com.adobe.fmdita.xmleditor.config.XmlEditorConfig]
+  jcr_properties: ["jcr:content/fmUuid"]
+  config_files: [ui_config.json]
+  reserved_paths: ["/content/dam/projects/translation_output", "/content/uuid-upgrade"]
+  legacy_names: ["XML Documentation for AEM", "XML Add-On"]
+  env_signal: >
+    Adobe Developer Console credentials in the environment (client_id, client_secret, IMS org)
+    indicate OAuth S2S is already provisioned.
+
+docs:
+  - https://experienceleague.adobe.com/en/docs/experience-manager-guides/using/api-reference/introduction
+  - https://experienceleague.adobe.com/en/docs/experience-manager-guides/using/api-reference/api-update-swagger
+  - https://experienceleague.adobe.com/en/docs/experience-manager-guides/using/release-info/release-notes/on-prem-release-notes/latest-release-info
+  - https://experienceleague.adobe.com/en/docs/experience-manager-guides/using/user-guide/author-content/work-with-editor/web-editor-git-connector
+  - https://experienceleague.adobe.com/en/docs/experience-manager-guides/using/install-conf-guide/editor-configs/editor-cloud-settings/conf-pdf-generation-dita-ot
+  - https://experienceleague.adobe.com/en/docs/experience-manager-guides/using/install-conf-guide/migrate-content-cs/conf-uuid-filename-pattern

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<book xmlns="http://docbook.org/ns/docbook" version="5.1" xml:lang="en">
+  <title>Fixture publication</title>
+  <chapter xml:id="intro">
+    <title>Introduction</title>
+    <para>Paligo is DocBook 5.1. The published XML carries no metadata and no
+    information about text fragments or variables.</para>
+  </chapter>
+</book>

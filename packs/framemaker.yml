@@ -1,0 +1,96 @@
+id: framemaker
+display_name: Adobe FrameMaker (structured) and FrameMaker Publishing Server
+archetype: [A, C, E]              # resolved by the save-format discriminator below
+source_format: mixed
+last_verified: 2026-09-18
+confidence: medium
+
+current_version:
+  desktop: "2026 release (v18)"
+  publishing_server: "December 2022 release, Update 3 (v17)"
+  skew_note: >
+    FMPS is roughly four years behind the desktop product, and its own release notes say it is
+    powered by the FrameMaker September 2022 release. Probe the version before generating any URL.
+
+# THE decisive question for this vendor.
+archetype_discriminator:
+  rule: >
+    If the working tree is .fm / .book, the team is archetype C despite FrameMaker being a
+    DITA-capable tool. If it is .xml / .dita / .ditamap, they are archetype A and the full
+    pipeline is available. Both can legitimately coexist mid-migration.
+  dita_default_version: "1.3"
+  note: >
+    New structured topics default to a .xml or .dita extension, configurable in the DITA Options
+    dialog. Adding a DITA 1.3-only construct silently upgrades the topic.
+
+binary_trap:
+  operation: Save Ditamap As
+  composite_document_fm: >
+    Embeds all referenced topics, so later topic edits are NOT reflected.
+  book_with_fm_components: >
+    Converts each topic to .fm.
+  adobe_statement: "You cannot round-trip the DITA map to book conversion."
+
+render_service:
+  type: fmps
+  api_paths_v16:
+    - POST   /v16/tasks
+    - GET|POST|PUT|DELETE /v16/presets
+    - GET|POST|PUT|DELETE /v16/presets/:id
+    - POST   /v16/queue/scheduleTask/{taskId}
+    - POST   /v16/queue/stopTask          # runid in the body
+    - GET    /v16/queue
+    - GET    /v16/queue/{id}
+    - GET    /v16/queue/task/running/:id
+    - GET    /v16/queue/task/lastrunguid/:guid
+  api_paths_2019:
+    - GET /fmserver/v1/run/tasks/{TASKNAME}
+    - GET /fmserver/v1/kill/tasks/{TASKNAME}
+  preset_definition: one .sts settings file plus an optional DITAVAL
+  auth: optional / site-configured        # confidence: unverified
+  ports_seen: [7000, 6234]
+
+gotchas:
+  - id: fmps-single-queue
+    severity: high
+    text: >
+      "At any time, there can be only one task in the schedule queue," and you must keep roughly a
+      one-second delay between consecutive tasks. A CI pipeline that fires parallel publish jobs
+      will fail.
+  - id: fmps-path-versioning
+    severity: high
+    text: >
+      The 2019 release keyed tasks by NAME at /fmserver/v1/...; v16 keys them by ID at /v16/....
+      Adobe's own docs also show a :id colon-prefix that is copied verbatim into broken client
+      code. Probe, never assume.
+  - id: sts-is-style-mapping
+    severity: medium
+    text: >
+      .sts is a style-mapping file for unstructured-to-DITA conversion, NOT a publishing settings
+      artefact. It is consumed alongside ditaElems.xml and style2attrMap.xml when converting
+      .fm/.book to DITA.
+  - id: binary-is-archetype-c
+    severity: medium
+    text: >
+      A team working in .fm/.book has no semantic diffs and no component reuse, regardless of
+      FrameMaker's DITA capability. Say so rather than implying otherwise.
+
+separate_skus:
+  - capability: FrameMaker Publishing Server
+    price: quote
+    note: 'Adobe states FrameMaker "must be purchased separately" from FMPS.'
+
+detect:
+  files: ["*.fm", "*.book", "*.mif", "*.sts", "structapps.fm", "ditaElems.xml", "style2attrMap.xml"]
+  env: [STRUCTDIR]
+  install_paths:
+    windows: ["%PROGRAMFILES%\\Adobe\\AdobeFrameMaker*"]
+    darwin: ["/Applications/Adobe FrameMaker*"]
+  structapps_layout: "$STRUCTDIR/structapps.fm with <StructuredSetup><XMLApplication> entries"
+
+docs:
+  - https://help.adobe.com/en_US/framemaker/using/using-framemaker/user-guide/frm_structauth-dita_sd_customization.html
+  - https://help.adobe.com/en_US/framemaker/using/using-framemaker/user-guide/frm_structauth-dita_sd_ditamaps-save-as.html
+  - https://help.adobe.com/en_US/framemaker/server/fmps-user-guide/fmps_work_with_rest_apis.html
+  - https://help.adobe.com/en_US/framemaker/server/fmps-user-guide/id2091F0T80ZX.html
+  - https://www.adobe.com/products/framemaker/publishing-server.html

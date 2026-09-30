@@ -1,0 +1,54 @@
+id: zoomin
+display_name: Zoomin (Salesforce)
+archetype: [D]
+source_format: mixed
+last_verified: 2026-09-18
+confidence: high
+
+status: sunsetting
+
+# This pack exists to STOP a recipe from running, not to enable one.
+finding_type: migration_risk
+finding_text: >
+  Detecting Zoomin in 2026 is detecting a contract running out, not a delivery target to invest
+  in. DAC must raise a migration-risk finding and must NOT wire a publish step to it.
+
+ownership:
+  acquired_by: Salesforce
+  completed: 2024-11-01
+  reported_price: $344 million (per a Salesforce filing, as reported by Bloomberg)
+  founded: 2016 by Gal Oron, Hannah Saltzman and Joe Gelb
+
+end_of_renewals:
+  date: 2025-09-01
+  affected: [documentation portal, In-Product Help, Zoomin for Salesforce, Zoomin for ServiceNow,
+             the API, Headless solutions]
+  salesforce_framing: >
+    "an end of renewals, not an end of life" - existing contracts are honoured, which for some
+    customers runs into 2026.
+
+what_survives:
+  product: Unified Knowledge inside Data Cloud / Agentforce
+  mechanism: >
+    Zoomin connectors extract from third-party systems and transform to HTML for Salesforce
+    ingestion.
+
+exit_routes:
+  - vendor: fluid-topics
+    note: Fluid Topics still ships a Zoomin connector, which is a plausible migration path.
+
+detect:
+  url_patterns: ["zoominsoftware.io"]
+  content_patterns: ["Powered by Zoomin"]
+  detection_caution:
+    severity: medium
+    text: >
+      Do NOT match a bare "zoomin" substring. It matches prose discussing the product - including
+      DAC's own reference files - and occurs inside unrelated words. Require a host or an
+      attribution string that only appears in a real deployment. This was a real false positive
+      caught during DAC's own validation.
+
+docs:
+  - https://www.salesforce.com/news/stories/salesforce-signs-definitive-agreement-to-acquire-zoomin/
+  - https://www.scriptorium.com/2025/06/is-zoomin-being-discontinued/
+  - https://unifiedknowledge.ai/salesforce/

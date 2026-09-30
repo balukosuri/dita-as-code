@@ -1,0 +1,94 @@
+id: oxygen
+display_name: Oxygen XML Editor / Author
+archetype: [A]                    # promote to [A, E] only on evidence of a Publishing Engine key
+source_format: dita
+last_verified: 2026-09-18
+confidence: high
+
+current_version: "28.1"
+bundled_dita_ot: 4.4.0            # in 28.1, at [INSTALL]/frameworks/dita/DITA-OT
+bundled_dita_ot_note: >
+  The cleanest "version is exactly knowable" case in the survey. Pin CI to this version so local
+  and CI output match. Syncro Soft warns that swapping in a custom DITA-OT can cause validation
+  issues, because the DITA framework uses that toolkit's XML catalogs, and does not officially
+  support custom distributions.
+
+authoring:
+  headless: false
+  automation_note: >
+    DAC never automates the editor. Content lands on disk as DITA and everything downstream is
+    archetype A. This is why an Oxygen shop is already most of the way to docs-as-code.
+
+cli:
+  requires: Oxygen Scripting licence (separate commercial purchase)
+  licence_file: scriptinglicensekey.txt      # in the application root, parent of scripts/
+  distribution: "All Platforms build only - the standard installer may not include scripts/"
+  runtime: Java/OpenJDK 11 or 17
+  notable_script: >
+    validateCheckDITA.sh -i input [-c ctx] [-s settings] [-r report] - the richest DITA link and
+    completeness checker available anywhere, accepting a map or a .ditaproject.
+
+git:
+  source_sync: true
+  via: Built-in Git client; Oxygen Content Fusion for full Git projects
+  note: See the oxygen-content-fusion pack. Content Fusion is a genuinely Git-native DITA CMS.
+
+separate_skus:
+  - capability: Oxygen Scripting
+    why_needed: any headless Oxygen automation, including CI validation
+    price: quote only; trial keys on request from sales
+  - capability: Oxygen Publishing Engine
+    why_needed: CLI PDF and WebHelp
+    price: "$7,896 (v28, 4-core Professional incl. 1yr SMP)"
+    licence_file: licensekey.txt in DITA-OT-DIR
+  - capability: WebHelp alone
+    price: "$5,026 (v28, 4-core)"
+  - capability: PDF Chemistry alone
+    price: "$2,538 licence / $4,230 with 1yr SMP (2-core Enterprise)"
+    licence_file: >
+      licensekey.txt in DITA-OT-DIR/plugins/com.oxygenxml.pdf.css/lib/oxygen-pdf-chemistry/
+    note: Without it, PDF output is logo-stamped.
+
+detect:
+  files: ["*.xpr", "scriptinglicensekey.txt", "licensekey.txt"]
+  dirs: [".oxygen", ".oxygen/frameworks/dita/resources", "scripts", "frameworks/dita/DITA-OT"]
+  install_paths:
+    darwin: ["/Applications/Oxygen XML *.app", "~/Applications/Oxygen XML *.app"]
+    windows: ["%PROGRAMFILES%\\Oxygen XML *", "%PROGRAMFILES(X86)%\\Oxygen XML *"]
+    linux: ["/opt/oxygen*", "~/oxygen*"]
+  project_local_framework_key: additional.frameworks.directories -> {$pd}/.oxygen
+
+gotchas:
+  - id: three-licences-three-locations
+    severity: high
+    text: >
+      Scripting, Publishing Engine and PDF Chemistry are three separate purchases with three
+      separate key files in three different directories. Teams routinely discover this mid-project.
+      No extra key is needed when running OPE or Chemistry inside a started Oxygen Editor - only
+      from the command line.
+  - id: xpr-is-not-parseable-config
+    severity: low
+    text: >
+      The .xpr file is a serialized Java object graph in XML (serializableOrderedMap,
+      documentTypeDescriptor-array). Fingerprint it; do not try to read it semantically.
+  - id: no-official-github-action
+    severity: low
+    text: >
+      There is no official Oxygen GitHub Action. The documented CI pattern is a Gradle script that
+      downloads oxygen-publishing-engine.zip, writes licensekey.txt from a LICENSE_KEY environment
+      variable, and runs bin/dita --project.
+
+degrade_path:
+  when: no Oxygen Scripting licence
+  install_instead: DITA-OT validate, xmllint with an XML catalog, and Schematron via a free CLI
+  lost: >
+    "Validate and Check For Completeness" - the most thorough DITA link and completeness check
+    available. Narrower rule coverage, but no licence cost.
+
+docs:
+  - https://www.oxygenxml.com/doc/versions/28.1/ug-editor/topics/scripting_oxygen.html
+  - https://www.oxygenxml.com/xml_scripting/download.html
+  - https://www.oxygenxml.com/doc/versions/28.1/ug-editor/topics/preferences-dita.html
+  - https://www.oxygenxml.com/doc/versions/28.1/ug-ope/topics/ope-licensing.html
+  - https://www.oxygenxml.com/xml_scripting/pricing.html
+  - https://blog.oxygenxml.com/topics/building_and_publishing_using_script.html

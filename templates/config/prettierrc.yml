@@ -1,0 +1,30 @@
+# Deterministic XML formatting for DITA sources.
+#
+# This is the single highest-value configuration file DAC writes. "XML diffs are unreadable
+# in pull requests" is the most common objection to DITA in a docs-as-code workflow, and
+# deterministic formatting is the answer. dita-ot/docs normalises every .dita* file this way.
+#
+# Requires: npm install --save-dev prettier @prettier/plugin-xml
+
+plugins:
+  - "@prettier/plugin-xml"
+
+printWidth: 120
+endOfLine: lf
+tabWidth: 2
+useTabs: false
+
+# CRITICAL for DITA. DITA is whitespace-sensitive in mixed content: reflowing text inside
+# <p>, <ph> or <uicontrol> can change rendered spacing. `strict` preserves it.
+xmlWhitespaceSensitivity: strict
+xmlSelfClosingSpace: false
+
+overrides:
+  # Key-definition and link maps are often one long line per entry. A wider width keeps
+  # each entry on its own line so diffs stay one-line-per-change.
+  - files: ["*.ditamap", "*.bookmap"]
+    options:
+      printWidth: 160
+  - files: "*.ditaval"
+    options:
+      printWidth: 120

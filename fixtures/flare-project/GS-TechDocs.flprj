@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CatapultProject Version="1"
+    MasterStylesheet="Content/Resources/Stylesheets/main.css"
+    MasterPageLayout="Content/Resources/PageLayouts/Default.flpgl"
+    MasterToc="Project/TOCs/Master.fltoc"
+    IncludePattern="*.png;*.jpg;*.flmsp;*.css;*.fltar;*.flvar;*.flskn"
+    SourceControlBound="true"
+    PreviewConditionalExpression="exclude[&quot;Default.ScreenOnly&quot;]">
+  <Files />
+  <CollectedSourceFiles />
+  <SkippedSourceFiles />
+  <GeneratedFiles />
+</CatapultProject>

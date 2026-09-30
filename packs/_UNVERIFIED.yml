@@ -1,0 +1,136 @@
+# Vendors that exist and are DITA-capable, but whose operational capability could not be
+# verified from public documentation. DAC must classify these, say plainly that it could
+# not verify them, and probe rather than assume. Never let `dac vendors research` write a
+# confident pack from marketing copy.
+
+- id: componize
+  display_name: Componize (Alfresco)
+  archetype: [B]
+  source_format: dita              # also DocBook
+  confidence: unverified
+  still_sold: true
+  sold_as: [saas, on_premises]
+  licensing: named / concurrent / combined - a concurrent licence costs 2.5x a named one
+  latest_documented_platform: >
+    Componize for Alfresco 5.4.0 against Alfresco Enterprise 7.4.1.3 / Community 7.4.0.1,
+    OpenJDK 11.0.13, Tomcat 9.0.54. No newer entry appears in the supported-platforms table,
+    which reads as a slower cadence than the SaaS page implies.
+  api_claim: 'Advertises a "Componize Public JAVA API" and a "Public Rest API"'
+  api_reality: >
+    No endpoint reference, auth scheme or request example exists on the public web. Treat as
+    unverified and probe.
+  realistic_export_path: >
+    Alfresco's surfaces, not Componize's. CMIS is the standardised, well-tooled option -
+    /alfresco/api/-default-/public/cmis/versions/1.1/atom - alongside WebDAV, SFTP, XProc
+    pipelines, Alfresco Folder Rules and Maven CI integration.
+  dita_ot: "contains the latest stable version of the DITA Open Toolkit; own version
+            substitutable. Exact version NOT published - must be probed."
+  detect:
+    files: [alfresco-global.properties, "*.xpl"]
+    dirs: ["webapps/alfresco", "webapps/share", "amps", "modules"]
+    properties: [dita-ot.server.url]
+  docs:
+    - https://componize.com/standards/
+    - https://docs.componize.com/r/componize-solution-overview/summary-of-automation-capabilities
+    - https://help.componize.com/latest/topic/com.componize.componize-for-alfresco.administration-guide/administration-guide/topics/supported-software.html
+
+- id: bluestream-xdocs
+  display_name: Bluestream XDocs
+  archetype: [B]
+  source_format: dita
+  confidence: unverified
+  backend: relational (MySQL), on-premise only
+  api_claim: "comprehensive RESTful APIs enabling the integration with 3rd party systems"
+  api_reality: >
+    Marketing-level only. No public API reference, no base URL, no auth documentation. A QAD case
+    study cites the APIs linking a CPQ tool to DITA source, but nothing operational is published.
+  git: none
+  git_note: >
+    Bluestream's own positioning paper is titled "How do you decide between Git or a Component
+    Content Management System?" and frames the two as alternatives.
+  # This guard is the whole reason this entry exists.
+  negative_guards:
+    - pattern: "xdocm.com"
+      severity: critical
+      text: >
+        Searching for "XDocs API" surfaces docs.xdocm.com / docs-api.xdocm.com with an
+        XDocServerService.ashx?XM=...&XSC=...&XST=... interface. THAT IS A DIFFERENT PRODUCT - a
+        mortgage/loan document system called XDOC. An unsupervised vendor-research run will
+        happily write a confident, entirely fictional capability pack from it. Never treat
+        xdocm.com hosts or XDocServerService.ashx as evidence about Bluestream XDocs.
+  best_available_signal: >
+    Oxygen with an XDocs CMS menu or connector add-on installed. Given the absence of documented
+    server fingerprints, this is the most reliable detection route.
+  delivery_product: XDelivery
+  docs:
+    - https://bluestream.com/products/xdocs-dita-ccms/system-administrator/
+    - https://bluestream.com/whitepapers/xdocs-dita-ccms-oxygen/
+    - https://bluestream.com/wp-content/uploads/2021/11/Git-or-CCMS-for-DITA.pdf
+
+- id: author-it
+  display_name: Author-it
+  archetype: [C]
+  source_format: proprietary       # relational database, 14 object types. Not DITA, not XML-native
+  confidence: medium
+  export_format: >
+    Author-it XML with an <Author-it> root and Objects / ObjectSummarys / Folders / Release States
+    / Variables / Information children, validated by a bundled AuthorIT.xsd.
+  export_trigger: UI only - Library Explorer -> right-click -> XML -> Save to file / Zip and Save
+  default_export_filename: "Author-it Objects.xml"
+  inbound_api: unverified
+  inbound_api_note: >
+    No public REST reference for reading or writing content programmatically. The architecture is
+    push-out, not pull-in.
+  outbound_2026R1:
+    - capability: HTTP Post
+      what: an after-publish action that sends a published file, including a ZIP of the whole
+            output, to a URL you define
+    - capability: AION
+      what: a JSON publishing output carrying content hierarchy, resolved variable values,
+            component-level metadata, release state, template classification and persistent
+            object IDs
+      cost: >
+        Free. "included in every Author-it subscription at no additional cost - no add-on module,
+        no premium tier." Unusual and worth telling the team.
+  escape_routes: >
+    Paligo's import enum includes `authorit`, and Fluid Topics ships both Authorit and
+    AuthoritMagellan connectors, so there are established routes out even without an API.
+  detect:
+    files: ["*.ait", "AuthorIT.xsd", "Author-it Objects.xml"]
+    install_paths:
+      windows: ["%PROGRAMFILES%\\Author-it"]
+    url_patterns: ["author-it.com"]
+  docs:
+    - https://kc.author-it.com/r/books/Author-it-On-Premises/Author-Module-Guide/Author-it-XML-Format
+    - https://kc.author-it.com/r/books/Author-it-On-Premises/Author-it-On-Premises-Release-Notes/2026.R1-Release-Notes
+    - https://www.author-it.com/resources/author-it-launches-aion-ai-content-foundation
+
+# Confirmed to exist and be DITA-capable, but no capability research performed. Good
+# candidates for `dac vendors research`. Do not guess at their capabilities.
+- id: _market_scan
+  display_name: Further DITA CCMS vendors on the market
+  confidence: unverified
+  vendors:
+    - GlobalLink CCMS (TransPerfect; the current name for Vasont Inspire, releases through
+      2026.2.4.0)
+    - Astoria (TransPerfect; On-Demand and On-Premise)
+    - DiscoverCX (Ingeniux; MongoDB; CCMS + WCMS + DXP)
+    - DITAToo (Intuillion; MySQL; on-prem)
+    - DITAworks (Alfresco / FileNet)
+    - DX4 (DITA Exchange; SharePoint-backed)
+    - RSuite Standard (Contiem; Alfresco-backed)
+    - Sirius DITA (Acolada; on-prem)
+    - Tektur (MongoDB; on-prem)
+    - Xeditor (XML editor fronting third-party backends)
+    - SCHEMA ST4 (Quanos)
+    - Docufy Cosima
+    - Documoto (parts catalogues)
+  naming_corrections:
+    - "Jorsek is the former company name of Heretto, not a separate vendor."
+    - "Vasont is now GlobalLink CCMS."
+    - >
+      DCL (Data Conversion Laboratory) is a content-conversion SERVICES firm, not a CCMS. It
+      belongs in a migration-partners list, never in the vendor table.
+  docs:
+    - https://www.ditawriter.com/list-of-dita-capable-cmses/
+    - https://www.globallinkccms.com/

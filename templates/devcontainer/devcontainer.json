@@ -1,0 +1,66 @@
+{
+  // A one-click DITA authoring and build environment.
+  //
+  // Why this file exists: "install Java, install the toolkit, set the path" is the single
+  // biggest onboarding failure in DITA-as-code. A devcontainer makes your laptop and CI the
+  // same image, so a build that passes in one passes in the other.
+  //
+  // This is a BUILD and VALIDATION environment. Keep authoring in Oxygen, Arbortext or
+  // XMetaL - there is no rich DITA authoring experience in VS Code.
+
+  "name": "DITA as Code",
+
+  // Java 17 specifically. DITA-OT 4.4.x is designed for and tested against 17, and
+  // DITA-OT's own CI pins Temurin 17. Newer JDKs sometimes work and sometimes fail opaquely
+  // inside Ant or Saxon. Note that a bare `brew install dita-ot` pulls a much newer JDK,
+  // which is how teams end up debugging this by accident.
+  "image": "mcr.microsoft.com/devcontainers/java:17-bookworm",
+
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "20" }
+  },
+
+  "containerEnv": {
+    "DITA_HOME": "/opt/dita-ot-{{DITA_OT_VERSION}}",
+    // Without a catalog, DITA validation either fails or silently fetches DTDs over HTTP.
+    "XML_CATALOG_FILES": "/opt/dita-ot-{{DITA_OT_VERSION}}/catalog-dita.xml"
+  },
+
+  "remoteEnv": {
+    "PATH": "${containerEnv:PATH}:/opt/dita-ot-{{DITA_OT_VERSION}}/bin"
+  },
+
+  "onCreateCommand": "bash .devcontainer/install-toolchain.sh",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        // 10M+ installs, actively maintained. The credible free XML validation layer.
+        "redhat.vscode-xml",
+        // Owns formatting so the editor, the pre-commit hook and CI agree byte for byte.
+        "esbenp.prettier-vscode",
+        "ChrisChinchilla.vale-vscode"
+        // Optional, not included by default: "JeremyJeanne.ditacraft" is the only
+        // purpose-built DITA extension, but it has roughly 1,200 installs and shares a sole
+        // maintainer with the dita-ot-gradle plugin. Add it if you want map visualisation
+        // and key-resolution tracing, knowing the support risk.
+      ],
+      "settings": {
+        "xml.catalogs": ["/opt/dita-ot-{{DITA_OT_VERSION}}/catalog-dita.xml"],
+        "xml.validation.enabled": true,
+        // Both of these are required and neither is discoverable. See templates/config/
+        // vscode-settings.json for why.
+        "xml.validation.resolveExternalEntities": true,
+        "xml.server.vmargs": "-Djdk.xml.entityExpansionLimit=128000 -Xmx1G",
+        "xml.format.enabled": false,
+        "files.trimTrailingWhitespace": false,
+        "files.associations": {
+          "*.dita": "xml",
+          "*.ditamap": "xml",
+          "*.ditaval": "xml",
+          "*.bookmap": "xml"
+        }
+      }
+    }
+  }
+}

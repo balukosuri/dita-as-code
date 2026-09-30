@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<E3Config>
+  <AllowedFunctions>
+    <ClientFunction pattern="com.arbortext.e3c.*" type="java"/>
+    <ClientFunction pattern="publish*" type="acl"/>
+  </AllowedFunctions>
+</E3Config>

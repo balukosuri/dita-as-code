@@ -1,0 +1,90 @@
+id: fluid-topics
+display_name: Fluid Topics
+archetype: [D]
+source_format: mixed              # ingests many; it is a delivery target, not a source
+last_verified: 2026-09-18
+confidence: high
+
+api:
+  ingest: POST /api/admin/khub/sources/{sourceId}/upload?publisher=<urlencoded-name>
+  body: multipart/form-data with field `file`
+  auth: "Authorization: Bearer $API_KEY"
+  mandatory_header: "Ft-Calling-App"
+  mandatory_header_note: >
+    Required on Fluid Topics web services and very easy to miss. A missing Ft-Calling-App is a
+    common first-call failure.
+  create_source: PUT /api/admin/khub/sources/{sourceId}
+  read_api: /api/khub/maps?lang=en
+
+roles:
+  publish: [ADMIN, KHUB_ADMIN, CONTENT_PUBLISHER]
+  create_source: [ADMIN, KHUB_ADMIN]
+  correction:
+    severity: high
+    text: >
+      CONTENT_PUBLISHER is SUFFICIENT to publish - KHUB_ADMIN is only needed to CREATE a source,
+      and Fluid Topics' own use-case page recommends an integration key with exactly
+      CONTENT_PUBLISHER. Asking a writer's admin for KHUB_ADMIN requests far more privilege than
+      the job needs, and a smaller ask is far more likely to be granted.
+
+cli:
+  binary: ftpub
+  name: Fluid Topics Publisher
+  behaviour: >
+    The `publish` command collects documentation, zips it, and uploads through a source.
+    Single-document source types (Markdown, OpenAPI) need one invocation per document, each in its
+    own directory.
+  python_package: fluidtopics      # for custom connectors
+
+git:
+  source_sync: none
+  note: >
+    No native Git connector, but with ftpub plus a Bearer key this is a few lines in any CI runner.
+    This remains the easiest link in the chain.
+
+source_types:
+  [Antora, Authorit, AuthoritMagellan, Confluence, Dita, External, ExternalDocument,
+   FrameMaker-basic-html, Ftml, Jinja, OpenAPI, Madcap-flare, attachments, Markdown,
+   Microsoft-excel, Microsoft-word, MkDocs, Paligo, "SCHEMA ST4", UnstructuredDocuments]
+
+limits:
+  upload_max: 1.85 GB
+  topic_max: 100 MB
+  consumer_portal_upload: not possible
+
+gotchas:
+  - id: 404-means-permission
+    severity: high
+    text: >
+      If a source has allowedContentPublishersAllowed false and your key is not in allowedApiKeys,
+      upload returns 404 NOT FOUND, not 403. A probe that treats 404 as "wrong URL" will
+      misdiagnose a permissions problem and send the writer chasing the wrong fix.
+  - id: docbook-claim-not-in-docs
+    severity: medium
+    text: >
+      The product page claims Fluid Topics "natively ingests structured formats like DITA,
+      DocBook, HTML, Markdown, and YAML", but DocBook appears NOWHERE in the Supported Formats
+      page or the source `type` enum. If a Paligo shop is told "Fluid Topics eats DocBook",
+      verify before designing around it.
+
+free_probe:
+  url: https://docs.fluidtopics.com/api/khub/maps?lang=en
+  auth: none required
+  note: >
+    docs.fluidtopics.com is itself a production Fluid Topics instance with unauthenticated public
+    read endpoints. This gives DAC a real Fluid Topics API to validate its delivery-side detector
+    against, with zero procurement. Verified returning HTTP 200 on 18 September 2026.
+
+detect:
+  url_patterns: ["https://<tenant>.fluidtopics.net", "/api/khub/", "/api/admin/khub/"]
+  content_patterns: ["Ft-Calling-App"]     # unique and unmistakable
+  cli_on_path: [ftpub]
+  dependencies: ["fluidtopics"]            # in requirements.txt / pyproject.toml
+  extensions: [".ftmap"]
+
+docs:
+  - https://docs.fluidtopics.com/r/Fluid-Topics-API-Reference-Guide/Knowledge-Hub-web-services-for-administrators/Sources/Upload-content
+  - https://docs.fluidtopics.com/r/Fluid-Topics-API-Reference-Guide/Knowledge-Hub-web-services-for-administrators/Sources/Create-a-source
+  - https://docs.fluidtopics.com/r/Fluid-Topics-Configuration-and-Administration-Guide/Configure-a-Fluid-Topics-tenant/Integrations/API-keys/API-keys-use-case
+  - https://docs.fluidtopics.com/r/Fluid-Topics-Publisher-ftpub/Command-line-interface/Available-commands/Publish-documentation-to-a-Fluid-Topics-portal
+  - https://docs.fluidtopics.com/r/Fluid-Topics-Quick-Start-Guide/Welcome-on-board/Supported-formats

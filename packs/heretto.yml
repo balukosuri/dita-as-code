@@ -1,0 +1,107 @@
+id: heretto
+display_name: Heretto CCMS (formerly easyDITA / Jorsek)
+archetype: [B, E]
+source_format: dita
+last_verified: 2026-09-18
+confidence: high
+
+api:
+  base_url: https://{organizationId}.heretto.com/ezdnxtgen/api
+  auth:
+    - "Authorization: Basic base64(username:token)"    # recommended for automation
+    - "Cookie: JSESSIONID=<id>"                        # SSO tenants
+  v2_scope: [Deployments, Publishing Jobs, Publishing Scenarios, Releases]
+  v2_status: Alpha (self-labelled), publishing only - no content CRUD
+  bulk_updates: false              # one object per request
+  pagination: zero-indexed `page` and `size`, default 20, max 100
+
+# THE most important operational fact about this vendor.
+content_api:
+  version: v1
+  endpoints_named: [Get Document Contents, Get Document Information]
+  discoverable_via: the per-resource "REST URL" in the Resource Drawer
+  public: false
+  how_to_obtain: >
+    Heretto's own docs say "documentation available upon request" and direct you to your Customer
+    Success Manager. The content-extraction API is real but gated behind a human conversation.
+  blocker_shape: >
+    The Heretto blocker card is NOT "get an admin API key". It is "ask your CSM for the v1 API
+    documentation and to enable webhooks." Different ask, different recipient. Get this right or
+    the writer sends the wrong message to the wrong person.
+
+webhooks:
+  modes: [Notify, NotifyPull]
+  notify_pull: >
+    An external server pulls DITA SOURCE, not just output, for transformation elsewhere. This is
+    the sanctioned mechanism for getting source out and is the realistic export bridge.
+  gotchas:
+    - May not be available by default - contact your Customer Success Manager.
+    - The default webhook wait is three minutes before reporting a target-server error.
+
+git:
+  source_sync: none
+  note: No Git integration is documented. The export bridge must be built.
+
+export:
+  programmatic: partial
+  documented_path: >
+    A UI right-click: Content Library -> Download, Download > File + Dependencies, or
+    Download > Custom. Heretto explicitly labels Download > Custom as being "for custom Static
+    Site Generator scenarios", and its own FAQ calls this the manual backup path.
+
+webdav:
+  supported: false
+  note: >
+    Heretto states twice, emphatically, that it "does not provide general WebDAV support" and that
+    WebDAV exists only for Oxygen XML Editor/Author connections. Do not build an export on it.
+  repository_url_pattern: https://{tenant}.heretto.com/webdav/db/organizations/{org}/repositories
+
+dita_ot:
+  runs_internally: true
+  product: DITA-OT Cloud
+  supported_range: "2.5.4 - 3.7.4"
+  defaults: [dita-ot-2.5.4, dita-ot-3.6.1]
+  install_requires_role: Administrator
+  recommendation: 3.6.1 or later for processing-speed parameters; one scenario per output type
+
+gotchas:
+  - id: version-drift-chasm
+    severity: high
+    text: >
+      DITA-OT Cloud tops out at 3.7.4 while current local DITA-OT is 4.4.1. This is the single most
+      common cause of "it builds in the CCMS but not on my laptop", and teams rarely diagnose it.
+      Catching this in the audit alone justifies running DAC.
+  - id: v1-api-gated
+    severity: high
+    text: >
+      The only API that touches content is v1 and is not publicly documented. Plan for a CSM
+      conversation, not a self-serve key.
+  - id: v2-is-alpha
+    severity: medium
+    text: >
+      The v2 API is self-labelled Alpha and covers publishing only. Do not build content
+      extraction on it.
+
+separate_skus:
+  - capability: Heretto Portal
+    note: '"separate products" from the CCMS, per Heretto''s publishing overview'
+  - capability: Heretto Deploy API
+    note: separate product; read-only, sitemap-based, JWT-authenticated
+  - capability: additional DITA-OT Cloud workers
+    note: purchasable regardless of licence type; parallel publishing is tier-dependent
+  - capability: Etto Pro
+    note: Etto Essential is included; Pro adds custom AI rules
+
+detect:
+  content_patterns: ["heretto.com", "ezdnxtgen", "easydita", "jorsek"]
+  exclude_extensions: [".md"]     # prose discussing a CCMS is not evidence of its use
+  artefacts: DITA trees with UUID-style filenames plus a dependencies folder
+  oxygen_webdav_config: /webdav/db/organizations/<org>/repositories
+
+docs:
+  - https://help.heretto.com/en/heretto-ccms/api/ccms-api-overview
+  - https://help.heretto.com/en/heretto-ccms/api/ccms-api-authentication
+  - https://help.heretto.com/en/heretto-ccms/integrations/delivery-integrations/webhooks
+  - https://help.heretto.com/en/heretto-ccms/publish/dita-ot-integration/get-and-install-a-default-dita-open-toolkit
+  - https://help.heretto.com/en/heretto-ccms/manage/resource-management/download-files-from-the-content-library
+  - https://help.heretto.com/en/heretto-ccms/publish/heretto-publishing-overview

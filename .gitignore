@@ -1,0 +1,28 @@
+# DAC run state. Can contain API tokens - never commit it.
+.dac/state/
+.dac/journal.jsonl
+.dac/packs/
+
+# Reports are generated per run
+dac-audit.md
+dac-report.md
+
+# Build output
+out/
+temp/
+tmp/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Editors and OS
+.DS_Store
+.idea/
+*.swp
+
+# Test scratch
+/topics/
